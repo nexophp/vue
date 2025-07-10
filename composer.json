@@ -1,0 +1,21 @@
+{
+    "name": "nexophp/vue",
+    "type": "library",
+    "description": "封装VUE是混编PHP代码使用Element UI2.15.13的前提",
+    "keywords": ["php"],
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+           "name": "sunkangchina",
+           "email":"68103403@qq.com"
+        }
+    ],
+    "require": { 
+    }, 
+    "autoload": { 
+        "files": [
+            "./yii1-javascript-encode.php",
+            "./vue.php"
+        ]
+    }
+}
