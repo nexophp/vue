@@ -278,8 +278,4 @@ if($all){
 return json_success(['data'=>$all]); 
 ~~~
 
-
-
-### 开源协议 
-
-[Apache License 2.0](LICENSE)
+ 
