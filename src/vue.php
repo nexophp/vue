@@ -19,7 +19,7 @@ class Vue
     * 依赖 yarn add --dev javascript-obfuscator
     */
     public $encodejs = false;
-    public $upload_url = '/admin/upload/index';
+    public $upload_url = '/core/upload/index';
     public $opt = [
         'is_editor' => false,
         'is_page'  => false,
@@ -114,17 +114,11 @@ class Vue
         }
         if (function_exists("do_action")) {
             $version = $this->version;
-            do_action("vue_version", $version);
             if ($version && in_array($version, [2, 3])) {
                 $this->version = $version;
             }
         }
-        if ($this->use_config) {
-            $upload_url = get_config('upload_url');
-            if ($upload_url) {
-                $this->upload_url = $upload_url;
-            }
-        }
+        $this->upload_url = $config['upload_url'] ?: $this->upload_url;
     }
     /**
      * form字段
