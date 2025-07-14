@@ -14,8 +14,8 @@
     }, 
     "autoload": { 
         "files": [
-            "./yii1-javascript-encode.php",
-            "./vue.php"
+            "./src/yii1-javascript-encode.php",
+            "./src/vue.php"
         ]
     }
 }
