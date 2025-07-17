@@ -1,7 +1,11 @@
 <?php
 
 /**
+ * vue类
  * 用于生成vue2或vue3的JS代码
+ * @author sunkangchina <68103403@qq.com>
+ * @license MIT <https://mit-license.org/>
+ * @date 2025
  */
 
 class Vue
