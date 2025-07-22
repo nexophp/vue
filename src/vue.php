@@ -23,7 +23,7 @@ class Vue
     * 依赖 yarn add --dev javascript-obfuscator
     */
     public $encodejs = false;
-    public $upload_url = '/core/upload/index';
+    public $upload_url = '/admin/upload/index';
     public $opt = [
         'is_editor' => false,
         'is_page'  => false,
