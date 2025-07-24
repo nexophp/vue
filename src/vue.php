@@ -127,7 +127,7 @@ class Vue
     /**
      * form字段
      */
-    public function data_form($key, $val)
+    public function formData($key, $val)
     {
         $this->data_form[$key] = $val;
     }
@@ -344,7 +344,7 @@ class Vue
         }
         if ($this->encodejs) {
             $uri = $_SERVER['REQUEST_URI'];
-            $js_file = '/dist/js/vue/' . md5($uri) . '.js';
+            $js_file = '/assets/_dist/vue/' . md5($uri) . '.js';
             $output_path = PATH;
             if (defined('WWW_PATH')) {
                 $output_path = WWW_PATH;
