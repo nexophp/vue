@@ -436,7 +436,7 @@ class Vue
             "show()" => " 
                  this.is_show = true;
                  this.form = {};" . $data_form_add . "
-                 " . $this->load_editor_add() . "
+                 " . $this->loadEditorAdd() . "
             ",
         ];
 
@@ -444,7 +444,7 @@ class Vue
             "update(row)" => " 
                 this.is_show = true;
                 this.form = row;  " . $data_form_update . "
-                " . $this->load_editor_edit() . "
+                " . $this->loadEditorEdit() . "
             "
         ];
 
@@ -528,7 +528,7 @@ class Vue
         $this->data("editor", "js:{}");
 
         $this->method("weditor()", "js:   
-              " . $this->load_editor() . "  
+              " . $this->loadEditor() . "  
         ");
     }
     /**
@@ -546,7 +546,7 @@ class Vue
     /**
      * 添加
      */
-    public function load_editor_add()
+    public function loadEditorAdd()
     {
         $e = self::$_editor;
         if (!$e) {
@@ -565,7 +565,7 @@ class Vue
     /**
      * 更新
      */
-    public function load_editor_edit()
+    public function loadEditorEdit()
     {
         $e = self::$_editor;
         if (!$e) {
@@ -585,7 +585,7 @@ class Vue
     /**
      * 加载wangeditor
      */
-    public function load_editor()
+    public function loadEditor()
     {
         $e = self::$_editor;
         if (!$e) {
@@ -639,17 +639,17 @@ class Vue
      *    $where['created_at[<=]'] =  date("Y-m-d 23:59:59", strtotime($date[1]));
      * }
      */
-    public function add_date()
+    public function addDate()
     {
         $this->addDateTimeSelect();
     }
     /**
      * 重置时间字段
      */
-    public function reset_date()
+    public function resetDate()
     {
-        $this->method("reset_date()", "
-            this.pickerOptions = " . php_to_js($this->get_date_area()) . ";
+        $this->method("resetDate()", "
+            this.pickerOptions = " . php_to_js($this->getDateArea()) . ";
         ");
     }
     /**
@@ -752,9 +752,9 @@ class Vue
 
     public function addDateTimeSelect()
     {
-        $this->data['pickerOptions'] = $this->get_date_area();
+        $this->data['pickerOptions'] = $this->getDateArea();
     }
-    protected function get_date_range_flag($a, $b, $allow_1)
+    protected function getDateRangeFlag($a, $b, $allow_1)
     {
         if (!$allow_1 ||  ($allow_1 && $a >= $allow_1 && $b >= $allow_1)) {
             return true;
@@ -763,12 +763,12 @@ class Vue
     /**
      * 定时加载时间选择
      */
-    public function loop_picker_options($url, $time = 0)
+    public function reloadPicker($url, $time = 0)
     {
         global $vue;
         if ($time > 0) {
             $time = $time * 1000;
-            $this->reset_date();
+            $this->resetDate();
             $this->created(['interval_picker_options()']);
             $this->method("interval_picker_options()", " 
                 setInterval(()=>{
@@ -782,7 +782,7 @@ class Vue
     /**
      * 设置时间选择区间
      */
-    public function get_date_area()
+    public function getDateArea()
     {
         $search_date = $this->search_date;
         $allow_1 = $this->start_date;
@@ -798,7 +798,7 @@ class Vue
         ";
         $a = date("Y-m-d", strtotime('this week'));
         $b = date('Y-m-d', time());
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['本周'] = "
                 let start = new Date('" . $a . "'); 
                 let end   = new Date('" . $b . "'); 
@@ -807,7 +807,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('last week monday'));
         $b = date('Y-m-d', strtotime('-10 second', strtotime('last week sunday +1 day')));
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['上周'] = "
                 let start = new Date('" . $a . "'); 
                 let end   = new Date('" . $b . "'); 
@@ -816,7 +816,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('-2 weeks', strtotime('monday this week')));
         $b = date('Y-m-d', strtotime('-1 week -1 second', strtotime('monday this week')));
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['上上周'] = "
                 let start = new Date('" . $a . "'); 
                 let end   = new Date('" . $b . "'); 
@@ -825,7 +825,7 @@ class Vue
         }
         $a = date("Y-m-01");
         $b = date("Y-m-d");
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['本月'] = "
                 let start = new Date('" . $a . "');
                 let end = new Date('" . $b . "'); 
@@ -834,7 +834,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('first day of last month'));
         $b = date("Y-m-d", strtotime('last day of last month'));
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['上月'] = "
                 let start = new Date('" . $a . "'); 
                 let end = new Date('" . $b . "'); 
@@ -843,7 +843,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('-2 months', strtotime('first day of this month')));
         $b = date("Y-m-d", strtotime('-1 day', strtotime('first day of last month')));
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['上上月'] = "
                 let start = new Date('" . $a . "'); 
                 let end = new Date('" . $b . "'); 
@@ -852,7 +852,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('-1 month') + 86400);
         $b = date('Y-m-d');
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['最近一个月'] = "
                 let start = new Date('" . $a . "'); 
                 let end = new Date('" . $b . "'); 
@@ -861,7 +861,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('-2 month') + 86400);
         $b = date('Y-m-d');
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['最近两个月'] = "
                 let start = new Date('" . $a . "'); 
                 let end = new Date('" . $b . "'); 
@@ -870,7 +870,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('-3 month') + 86400);
         $b = date('Y-m-d');
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['最近三个月'] = "
                 let start = new Date('" . $a . "'); 
                 let end = new Date('" . $b . "'); 
@@ -887,7 +887,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('first day of January'));
         $b = date("Y-m-d", strtotime('last day of December'));
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['本年'] = "
                 const start = new Date('" . $a . "');
                 const end = new Date('" . $b . "'); 
@@ -896,7 +896,7 @@ class Vue
         }
         $a = date("Y-m-d", strtotime('first day of January last year'));
         $b = date("Y-m-d", strtotime('last day of December  last year'));
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['上年'] = "
                 const start = new Date('" . $a . "');
                 const end = new Date('" . $b . "'); 
@@ -905,7 +905,7 @@ class Vue
         }
         $a = date("Y-m-d", mktime(0, 0, 0, 1, 1, date('Y') - 2));
         $b = date("Y-m-d", mktime(23, 59, 59, 12, 31, date('Y') - 2));
-        if ($this->get_date_range_flag($a, $b, $allow_1)) {
+        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
             $arr['上上年'] = "
                 const start = new Date('" . $a . "');
                 const end = new Date('" . $b . "'); 
@@ -947,7 +947,7 @@ class Vue
     /**
      * 生成导入数据按钮
      */
-    public function get_import($opt = [])
+    public function getImport($opt = [])
     {
         $title = $opt['title'] ?: '导入数据';
         $success = $opt['success'] ?: 'import_xls_uploaded';
