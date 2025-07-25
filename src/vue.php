@@ -486,10 +486,8 @@ class Vue
                    _this.loading = false; 
                 }
             });");
-        } else {
-            //$this->method('load()', "js:");
-        }
-        $after_save = $this->after_save;
+        } else { 
+        } 
         $after_save_str = '';
         if ($this->after_save) {
             foreach ($this->after_save as $v) {
@@ -526,9 +524,12 @@ class Vue
     public function editor_method()
     {
         $this->data("editor", "js:{}");
-
+        $js = '';
+        foreach(self::$_editor as $name){
+            $js .= $this->loadEditor($name);
+        }
         $this->method("weditor()", "js:   
-              " . $this->loadEditor() . "  
+              " . $js . "  
         ");
     }
     /**
@@ -585,45 +586,69 @@ class Vue
     /**
      * 加载wangeditor
      */
-    public function loadEditor()
+    public function loadEditor($name)
     {
-        $e = self::$_editor;
-        if (!$e) {
-            return;
-        }
+        global $vue;
+        $code =  "
+            parent.layer.closeAll();  
+            parent.editor" . $name . ".insertNode({
+                type: 'image',
+                src: data.url,
+                children: [{ text: '' }]
+            });
+        ";
+        $code = aes_encode($code); 
         $js = '';
-        foreach ($e as $name) {
-            $js .= " 
-                if(editor" . $name . "){ 
+        $js .= "
+                if (editor" . $name . ") {
                     editor" . $name . ".destroy();
+                }
+                if (toolbar" . $name . ") {
+                    toolbar" . $name . ".destroy();
                 }
                 var editorConfig" . $name . " = {
                     placeholder: '',
                     MENU_CONF: {
-                      uploadImage: {
-                        fieldName: 'file',server: '" . $this->upload_url . "?is_editor=1'
-                      }
-                    }, 
-                    onChange(editor) {  
-                      _this.form." . $name . " = editor.getHtml(); 
+                        uploadImage: {
+                            fieldName: 'file',
+                            customBrowseAndUpload: function(insertFn) {
+                                layer.open({
+                                    type: 2,
+                                    title: '" . lang('上传图片') . "',
+                                    area: ['90%', '80%'],
+                                    content: '/admin/media/index?js=" . $code . "'
+                                }); 
+                                return;
+                            },   
+                        }
+                    },
+                    onChange(editor) {
+                        _this.form." . $name . " = editor.getHtml();
                     }
-                }; 
-                editor = E.createEditor({
-                    selector: '#" . $name . "weditor', 
+                };
+                var editor = E.createEditor({
+                    selector: '#" . $name . "weditor',
                     config: editorConfig" . $name . ",
-                    mode: 'simple',  
-                }); 
-                editor" . $name . " = editor; 
-                var toolbarConfig" . $name . " = {}; 
+                    mode: 'simple'
+                });
+                editor" . $name . " = editor;
+                var toolbarConfig" . $name . " = {
+                    toolbarKeys: [
+                        'fontFamily',
+                        'fontSize',
+                        'color',
+                        'bgColor',
+                        'bold',
+                        'italic',
+                        'uploadImage'
+                    ]
+                };
                 var toolbar" . $name . " = E.createToolbar({
                     editor,
                     selector: '#" . $name . "weditor-tool',
-                    config: toolbarConfig" . $name . ",
-                    mode: 'simple',  
-                });   
-                ";
-        }
-
+                    config: toolbarConfig" . $name . "
+                });
+            ";
         return $js;
     }
     /**
@@ -663,8 +688,7 @@ class Vue
         $ajax_url = $options['ajax_url'];
         $sortable = "sortable" . mt_rand(1000, 9999);
         $this->mounted('', "js:this." . $sortable . "();");
-        $this->method($sortable . "()", "js: 
-           
+        $this->method($sortable . "()", "js:  
           Sortable.create(document.querySelector('" . $element . "'),{     
             handle:'.handler', 
             onEnd(eve) {   
@@ -720,7 +744,8 @@ class Vue
             this." . $load . ";
         ");
         if (!$arr[':page-sizes']) {
-            $arr[':page-sizes'] = json_encode(page_size_array());
+            $page_size_array = get_config('page_size_array')?:[10,20,50,100,1000];
+            $arr[':page-sizes'] = json_encode($page_size_array);
         }
         if (!$arr[':current-page']) {
             $arr[':current-page'] = $where . '.page';
@@ -1046,20 +1071,12 @@ function vue_get_jidu($time = '')
 function vue_get_jidu_array($year)
 {
     return [
-        1 => [$year . "-01-01", $year . "-03-" . vue_get_last_day($year . "-03")],
-        2 => [$year . "-04-01", $year . "-06-" . vue_get_last_day($year . "-06")],
-        3 => [$year . "-07-01", $year . "-09-" . vue_get_last_day($year . "-09")],
-        4 => [$year . "-10-01", $year . "-12-" . vue_get_last_day($year . "-12")],
+        1 => [$year . "-01-01", $year . "-03-" . date("t", strtotime(($year . "-03")))],
+        2 => [$year . "-04-01", $year . "-06-" . date("t", strtotime(($year . "-06")))],
+        3 => [$year . "-07-01", $year . "-09-" . date("t", strtotime(($year . "-09")))],
+        4 => [$year . "-10-01", $year . "-12-" . date("t", strtotime(($year . "-12")))],
     ];
-}
-/**
- * 某月的最后一天
- */
-function vue_get_last_day($month = '2023-07')
-{
-    return date("t", strtotime($month));
-}
-
+} 
 /**
  * vue message
  */
