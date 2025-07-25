@@ -35,12 +35,12 @@ class Vue
     public $after_save = [];
     public $editor_timeout = 600;
     public $opt_method = [
-        'is_page'   => 'page_method',
-        'is_reset'  => 'reset_method',
-        'is_add'    => 'add_method',
-        'is_edit'   => 'edit_method',
-        'is_tree'   => 'tree_method',
-        'is_editor' => 'editor_method',
+        'is_page'   => 'pageMethod',
+        'is_reset'  => 'resetMethod',
+        'is_add'    => 'addMethod',
+        'is_edit'   => 'editMethod',
+        'is_tree'   => 'treeMethod',
+        'is_editor' => 'editorMethod',
     ];
     public $opt_data = [
         'is_page' => 'page_data',
@@ -78,18 +78,18 @@ class Vue
     public $created_js = [];
     public $methods    = [];
     public $create_update_load = [];
-    public $page_method = [
+    public $pageMethod = [
         'page_size_change(val)' => "this.where.page= 1;this.where.per_page = val;this.load();",
         'page_change(val)'      => "this.where.page = val;this.load();",
     ];
-    public $reset_method = [
+    public $resetMethod = [
         'reload()' => "this.where.page = 1;this.loading=true;this.load();",
         'reset()'  => "this.where = {};this.loading=true;this.load();",
     ];
-    public $add_method = '';
-    public $edit_method = '';
+    public $addMethod = '';
+    public $editMethod = '';
     public $tree_field = 'pid';
-    public $tree_method = [
+    public $treeMethod = [
         'select_click(data)' => " 
             this.node = data;
             this.form.pid = data.id;
@@ -432,7 +432,7 @@ class Vue
             }
             $this->data['form'] = $form;
         }
-        $this->add_method = $this->add_method ?: [
+        $this->addMethod = $this->addMethod ?: [
             "show()" => " 
                  this.is_show = true;
                  this.form = {};" . $data_form_add . "
@@ -440,7 +440,7 @@ class Vue
             ",
         ];
 
-        $this->edit_method = $this->edit_method ?: [
+        $this->editMethod = $this->editMethod ?: [
             "update(row)" => " 
                 this.is_show = true;
                 this.form = row;  " . $data_form_update . "
@@ -486,8 +486,8 @@ class Vue
                    _this.loading = false; 
                 }
             });");
-        } else { 
-        } 
+        } else {
+        }
         $after_save_str = '';
         if ($this->after_save) {
             foreach ($this->after_save as $v) {
@@ -521,11 +521,11 @@ class Vue
     /**
      * 编辑器
      */
-    public function editor_method()
+    public function editorMethod()
     {
         $this->data("editor", "js:{}");
         $js = '';
-        foreach(self::$_editor as $name){
+        foreach (self::$_editor as $name) {
             $js .= $this->loadEditor($name);
         }
         $this->method("weditor()", "js:   
@@ -597,7 +597,7 @@ class Vue
                 children: [{ text: '' }]
             });
         ";
-        $code = aes_encode($code); 
+        $code = aes_encode($code);
         $js = '';
         $js .= "
                 if (editor" . $name . ") {
@@ -744,7 +744,7 @@ class Vue
             this." . $load . ";
         ");
         if (!$arr[':page-sizes']) {
-            $page_size_array = get_config('page_size_array')?:[10,20,50,100,1000];
+            $page_size_array = get_config('page_size_array') ?: [10, 20, 50, 100, 1000];
             $arr[':page-sizes'] = json_encode($page_size_array);
         }
         if (!$arr[':current-page']) {
@@ -810,146 +810,146 @@ class Vue
     public function getDateArea()
     {
         $search_date = $this->search_date;
-        $allow_1 = $this->start_date;
-        $arr['今天'] = "
+        $start_date = $this->start_date;
+        $output['今天'] = "
             let start = new Date('" . date('Y-m-d', time()) . "'); 
             let end  = new Date('" . date('Y-m-d', time()) . "'); 
             picker.\$emit('pick', [end, end]);
         ";
-        $arr['昨天'] = "
+        $output['昨天'] = "
             let start = new Date('" . date('Y-m-d', time() - 86400) . "'); 
             let end  = new Date('" . date('Y-m-d', time() - 86400) . "'); 
             picker.\$emit('pick', [start, start]);
         ";
-        $a = date("Y-m-d", strtotime('this week'));
-        $b = date('Y-m-d', time());
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['本周'] = "
-                let start = new Date('" . $a . "'); 
-                let end   = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('this week'));
+        $end = date('Y-m-d', time());
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['本周'] = "
+                let start = new Date('" . $start . "'); 
+                let end   = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('last week monday'));
-        $b = date('Y-m-d', strtotime('-10 second', strtotime('last week sunday +1 day')));
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['上周'] = "
-                let start = new Date('" . $a . "'); 
-                let end   = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('last week monday'));
+        $end = date('Y-m-d', strtotime('-10 second', strtotime('last week sunday +1 day')));
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['上周'] = "
+                let start = new Date('" . $start . "'); 
+                let end   = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('-2 weeks', strtotime('monday this week')));
-        $b = date('Y-m-d', strtotime('-1 week -1 second', strtotime('monday this week')));
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['上上周'] = "
-                let start = new Date('" . $a . "'); 
-                let end   = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('-2 weeks', strtotime('monday this week')));
+        $end = date('Y-m-d', strtotime('-1 week -1 second', strtotime('monday this week')));
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['上上周'] = "
+                let start = new Date('" . $start . "'); 
+                let end   = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-01");
-        $b = date("Y-m-d");
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['本月'] = "
-                let start = new Date('" . $a . "');
-                let end = new Date('" . $b . "'); 
+        $start = date("Y-m-01");
+        $end = date("Y-m-d");
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['本月'] = "
+                let start = new Date('" . $start . "');
+                let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('first day of last month'));
-        $b = date("Y-m-d", strtotime('last day of last month'));
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['上月'] = "
-                let start = new Date('" . $a . "'); 
-                let end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('first day of last month'));
+        $end = date("Y-m-d", strtotime('last day of last month'));
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['上月'] = "
+                let start = new Date('" . $start . "'); 
+                let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('-2 months', strtotime('first day of this month')));
-        $b = date("Y-m-d", strtotime('-1 day', strtotime('first day of last month')));
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['上上月'] = "
-                let start = new Date('" . $a . "'); 
-                let end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('-2 months', strtotime('first day of this month')));
+        $end = date("Y-m-d", strtotime('-1 day', strtotime('first day of last month')));
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['上上月'] = "
+                let start = new Date('" . $start . "'); 
+                let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('-1 month') + 86400);
-        $b = date('Y-m-d');
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['最近一个月'] = "
-                let start = new Date('" . $a . "'); 
-                let end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('-1 month') + 86400);
+        $end = date('Y-m-d');
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['最近一个月'] = "
+                let start = new Date('" . $start . "'); 
+                let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('-2 month') + 86400);
-        $b = date('Y-m-d');
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['最近两个月'] = "
-                let start = new Date('" . $a . "'); 
-                let end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('-2 month') + 86400);
+        $end = date('Y-m-d');
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['最近两个月'] = "
+                let start = new Date('" . $start . "'); 
+                let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('-3 month') + 86400);
-        $b = date('Y-m-d');
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['最近三个月'] = "
-                let start = new Date('" . $a . "'); 
-                let end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('-3 month') + 86400);
+        $end = date('Y-m-d');
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['最近三个月'] = "
+                let start = new Date('" . $start . "'); 
+                let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
         $jidu = vue_get_jidu();
         foreach ($jidu as $k => $v) {
             if ($v['flag']) {
-                $arr[$k] = " 
+                $output[$k] = " 
                     picker.\$emit('pick', ['" . $v[0] . "', '" . $v[1] . "']);
                 ";
             }
         }
-        $a = date("Y-m-d", strtotime('first day of January'));
-        $b = date("Y-m-d", strtotime('last day of December'));
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['本年'] = "
-                const start = new Date('" . $a . "');
-                const end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('first day of January'));
+        $end = date("Y-m-d", strtotime('last day of December'));
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['本年'] = "
+                const start = new Date('" . $start . "');
+                const end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", strtotime('first day of January last year'));
-        $b = date("Y-m-d", strtotime('last day of December  last year'));
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['上年'] = "
-                const start = new Date('" . $a . "');
-                const end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", strtotime('first day of January last year'));
+        $end = date("Y-m-d", strtotime('last day of December  last year'));
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['上年'] = "
+                const start = new Date('" . $start . "');
+                const end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
-        $a = date("Y-m-d", mktime(0, 0, 0, 1, 1, date('Y') - 2));
-        $b = date("Y-m-d", mktime(23, 59, 59, 12, 31, date('Y') - 2));
-        if ($this->getDateRangeFlag($a, $b, $allow_1)) {
-            $arr['上上年'] = "
-                const start = new Date('" . $a . "');
-                const end = new Date('" . $b . "'); 
+        $start = date("Y-m-d", mktime(0, 0, 0, 1, 1, date('Y') - 2));
+        $end = date("Y-m-d", mktime(23, 59, 59, 12, 31, date('Y') - 2));
+        if ($this->getDateRangeFlag($start, $end, $start_date)) {
+            $output['上上年'] = "
+                const start = new Date('" . $start . "');
+                const end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
             ";
         }
         if ($search_date) {
             $new_arr = [];
             foreach ($search_date as $title => $k) {
-                if ($arr[$k]) {
-                    $new_arr[$k] = $arr[$k];
-                } elseif ($arr[$title]) {
-                    $new_arr[$k] = $arr[$title];
+                if ($output[$k]) {
+                    $new_arr[$k] = $output[$k];
+                } elseif ($output[$title]) {
+                    $new_arr[$k] = $output[$title];
                 }
             }
-            $arr = $new_arr;
+            $output = $new_arr;
         }
         $js = [];
-        foreach ($arr as $k => $v) {
+        foreach ($output as $k => $v) {
             $js[] = [
                 'text' => $k,
                 "js:onClick(picker){
@@ -958,9 +958,9 @@ class Vue
             ];
         }
         $str = ['shortcuts' => $js];
-        if ($allow_1) {
+        if ($start_date) {
             $disable_str = "
-            return ctime < " . strtotime($allow_1) . ";
+            return ctime < " . strtotime($start_date) . ";
             ";
             $str[] = "js:disabledDate(time){ 
                       let ctime = time.getTime()/1000;
@@ -1076,7 +1076,7 @@ function vue_get_jidu_array($year)
         3 => [$year . "-07-01", $year . "-09-" . date("t", strtotime(($year . "-09")))],
         4 => [$year . "-10-01", $year . "-12-" . date("t", strtotime(($year . "-12")))],
     ];
-} 
+}
 /**
  * vue message
  */
