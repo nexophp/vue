@@ -1119,6 +1119,7 @@ function vue_el_table_drag($ele = '.table', $data = 'form.video_list',$end = '')
         const tbody = document.querySelector('" . $ele . " .el-table__body-wrapper tbody');   
         Sortable.create(tbody, { 
             draggable: '" . $ele . " .el-table__row',
+            handle: '.drag', 
             onEnd(evt) {   
                 let list = app." . $data . ";
                 if (evt.oldIndex !== evt.newIndex) {
