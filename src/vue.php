@@ -24,27 +24,12 @@ class Vue
     */
     public $encodejs = false;
     public $upload_url = '/admin/upload/index';
-    public $opt = [
-        'is_editor' => false,
-        'is_page'  => false,
-        'is_reset' => false,
-        'is_add'   => false,
-        'is_edit'  => false,
-        'is_tree'  => false,
-    ];
+    /**
+     * 生成编辑器HTML
+     */
+    public static $_editor;
     public $after_save = [];
     public $editor_timeout = 600;
-    public $opt_method = [
-        'is_page'   => 'pageMethod',
-        'is_reset'  => 'resetMethod',
-        'is_add'    => 'addMethod',
-        'is_edit'   => 'editMethod',
-        'is_tree'   => 'treeMethod',
-        'is_editor' => 'editorMethod',
-    ];
-    public $opt_data = [
-        'is_page' => 'page_data',
-    ];
     public $page_url;
     public $add_url;
     public $edit_url;
@@ -244,6 +229,7 @@ class Vue
     {
         global $config;
         $this->init();
+        $this->runEditor();
         $this->data['_vue_message'] = false;
         $data    = php_to_js($this->data);
         $created = "";
@@ -253,8 +239,8 @@ class Vue
         $methods_str = "";
         $watch_str = "";
         $mounted_str = "";
-        $br = "\n\t\t\t\t\t";
-        $br2 = "\n\t\t\t\t";
+        $br = "";
+        $br2 = "";
         if (!isset($this->methods["load_common()"])) {
             $this->methods["load_common()"] = "js:{}";
         }
@@ -289,12 +275,12 @@ class Vue
             $mounted_str .= $br . php_to_js($v) . "";
         }
         $js = "
-            var _this;
-            var app = new Vue({
+            var _this,app;
+            new Vue({
                 el:'" . $this->id . "',
                 data:" . $data . ",
                 created(){
-                    _this = this;
+                    _this = app =  this;
                     " . $created . "
                 },
                 mounted(){
@@ -308,9 +294,9 @@ class Vue
         ";
         if ($this->version == 3) {
             $js = "
-                var _this;
+                var _this,app;
                 const { createApp } = Vue;
-                var app = createApp({ 
+                app = createApp({ 
                     data(){ return " . $data . "},
                     created(){
                         _this = this;
@@ -344,7 +330,7 @@ class Vue
         }
         if ($this->encodejs) {
             $uri = $_SERVER['REQUEST_URI'];
-            $js_file = '/assets/_dist/vue/' . md5($uri) . '.js';
+            $js_file = '/assets/dist/vue/' . md5($uri) . '.js';
             $output_path = PATH;
             if (defined('WWW_PATH')) {
                 $output_path = WWW_PATH;
@@ -355,7 +341,7 @@ class Vue
                 mkdir($dir, 0777, true);
             }
             $is_write = true;
-            $ignore_encode = $config['vue_encodejs_ignore'] ?: ['/plugins/config/config.php'];
+            $ignore_encode = $config['vue_ignore'] ?: [];
             foreach ($ignore_encode as $v) {
                 if (strpos($uri, $v) !== false) {
                     $is_write = false;
@@ -409,10 +395,6 @@ class Vue
      */
     public function init()
     {
-        $opt = $this->opt;
-        if ($opt['is_page']) {
-            $this->created(['load()']);
-        }
         $data_form_add = '';
         $data_form_update = '';
         if ($this->data_form) {
@@ -432,44 +414,10 @@ class Vue
             }
             $this->data['form'] = $form;
         }
-        $this->addMethod = $this->addMethod ?: [
-            "show()" => " 
-                 this.is_show = true;
-                 this.form = {};" . $data_form_add . "
-                 " . $this->loadEditorAdd() . "
-            ",
-        ];
-
-        $this->editMethod = $this->editMethod ?: [
-            "update(row)" => " 
-                this.is_show = true;
-                this.form = row;  " . $data_form_update . "
-                " . $this->loadEditorEdit() . "
-            "
-        ];
 
         foreach ($this->data as $k => $vv) {
             $this->data[$k] = $this->parse_data($vv);
-        }
-
-        foreach ($opt as $k => $v) {
-            if ($v) {
-                if ($this->opt_method[$k]) {
-                    $method = $this->opt_method[$k];
-                    if (method_exists($this, $method)) {
-                        $this->$method();
-                    }
-                    if ($this->$method) {
-                        $this->methods = array_merge($this->methods, $this->$method);
-                    }
-                }
-                if ($this->opt_data[$k]) {
-                    $data_name = $this->opt_data[$k];
-                    $this->data = array_merge($this->$data_name, $this->data);
-                }
-            }
-        }
-        $this->crud();
+        } 
     }
     /**
      * 支持crud
@@ -478,12 +426,12 @@ class Vue
     {
         if ($this->page_url) {
             $this->method('load()', "js:ajax('" . $this->page_url . "',this.where,function(res) { 
-                _this.page   = res.current_page;
-                _this.total  = res.total;
-                _this.lists  = res.data;
-                _this.res  = res;
-                if(_this.loading){ 
-                   _this.loading = false; 
+                app.page   = res.current_page;
+                app.total  = res.total;
+                app.lists  = res.data;
+                app.res  = res;
+                if(app.loading){ 
+                   app.loading = false; 
                 }
             });");
         } else {
@@ -504,13 +452,13 @@ class Vue
                 } 
                 ajax(url,this.form,function(res){ 
                         console.log(res);
-                        _this.\$message({
+                        app.\$message({
                           message: res.msg||res.message,
                           type: res.type
                         }); 
                         if(res.code == 0){
-                            _this.is_show    = false; 
-                            _this.load();
+                            app.is_show    = false; 
+                            app.load();
                         }
                         " . $after_save_str . "
                 }); 
@@ -519,94 +467,37 @@ class Vue
         }
     }
     /**
-     * 编辑器
+     * wangeditor5
      */
-    public function editorMethod()
-    {
-        $this->data("editor", "js:{}");
-        $js = '';
-        foreach (self::$_editor as $name) {
-            $js .= $this->loadEditor($name);
-        }
-        $this->method("weditor()", "js:   
-              " . $js . "  
-        ");
-    }
-    /**
-     * 生成编辑器HTML
-     */
-    public static $_editor;
     public function editor($name = 'body')
     {
-        self::$_editor[] = $name;
+        self::$_editor[] = $name; 
         return '<div id="' . $name . 'editor—wrapper" class="editor—wrapper">
             <div id="' . $name . 'weditor-tool" class="toolbar-container"></div>
-            <div id="' . $name . 'weditor" class="editor-container" ></div>
+            <div id="' . $name . 'weditor" class="editor-container"  style="height:300px;"></div>
         </div> ';
     }
     /**
-     * 添加
+     * 运行编辑器
      */
-    public function loadEditorAdd()
-    {
-        $e = self::$_editor;
-        if (!$e) {
+    protected function runEditor(){
+        if(!self::$_editor){
             return;
-        }
+        }  
         $js = '';
-        foreach ($e as $name) {
-            $js .= "
-                setTimeout(function(){
-                    editor" . $name . ".setHtml('');
-                }," . $this->editor_timeout . ");                
+        foreach (self::$_editor as $name) { 
+            $code =  "
+                parent.layer.closeAll();  
+                parent._editorInstances['" . $name . "'].insertNode({
+                    type: 'image',
+                    src: data.url,
+                    children: [{ text: '' }]
+                });
             ";
-        }
-        return $js;
-    }
-    /**
-     * 更新
-     */
-    public function loadEditorEdit()
-    {
-        $e = self::$_editor;
-        if (!$e) {
-            return;
-        }
-        $js = '';
-        foreach ($e as $name) {
+            $code = aes_encode($code); 
             $js .= " 
-                let dd_editor" . $name . " = row." . $name . "; 
-                setTimeout(function(){
-                    editor" . $name . ".setHtml(dd_editor" . $name . "); 
-                }," . $this->editor_timeout . "); 
-            ";
-        }
-        return $js;
-    }
-    /**
-     * 加载wangeditor
-     */
-    public function loadEditor($name)
-    {
-        global $vue;
-        $code =  "
-            parent.layer.closeAll();  
-            parent.editor" . $name . ".insertNode({
-                type: 'image',
-                src: data.url,
-                children: [{ text: '' }]
-            });
-        ";
-        $code = aes_encode($code);
-        $js = '';
-        $js .= "
-                if (editor" . $name . ") {
-                    editor" . $name . ".destroy();
-                }
-                if (toolbar" . $name . ") {
-                    toolbar" . $name . ".destroy();
-                }
-                var editorConfig" . $name . " = {
+                if (!window._editorInstances) window._editorInstances = {};
+                var editor_config_" . $name . " = {
                     placeholder: '',
                     MENU_CONF: {
                         uploadImage: {
@@ -622,17 +513,12 @@ class Vue
                             },   
                         }
                     },
-                    onChange(editor) {
-                        _this.form." . $name . " = editor.getHtml();
+                    onChange(editor) { 
+                        app.form." . $name . " = editor.getHtml();
                     }
                 };
-                var editor = E.createEditor({
-                    selector: '#" . $name . "weditor',
-                    config: editorConfig" . $name . ",
-                    mode: 'simple'
-                });
-                editor" . $name . " = editor;
-                var toolbarConfig" . $name . " = {
+
+                var toolbar_config_" . $name . " = {
                     toolbarKeys: [
                         'fontFamily',
                         'fontSize',
@@ -643,13 +529,46 @@ class Vue
                         'uploadImage'
                     ]
                 };
-                var toolbar" . $name . " = E.createToolbar({
-                    editor,
-                    selector: '#" . $name . "weditor-tool',
-                    config: toolbarConfig" . $name . "
+                
+                window._editorInstances['".$name."'] = E.createEditor({
+                    selector: '#".$name."weditor',
+                    config: editor_config_".$name.",
+                    mode: 'simple'
                 });
+                 
+                var toolbar_".$name." = E.createToolbar({
+                    editor: window._editorInstances['".$name."'],
+                    selector: '#".$name."weditor-tool',
+                    config: toolbar_config_".$name."
+                }); 
             ";
-        return $js;
+        }  
+        $this->method("init_editor()" , $js);
+        $this->method("open_editor()", " 
+            if (document.querySelector('#" . $name . "weditor')) {  
+                app.init_editor();    
+            }
+        ");
+        $this->mounted('mounted_editor', "  
+            this.open_editor(); 
+        ");
+        
+        $js = '';
+        $edit_js = '';
+        foreach (self::$_editor as $name) {
+            $js .= "
+                setTimeout(function(){
+                    window._editorInstances['" . $name . "'].setHtml('');
+                },50);                
+            ";
+            $edit_js .= "  
+                setTimeout(function(){ 
+                    window._editorInstances['" . $name . "'].setHtml(app.form." . $name . "); 
+                },50); 
+            ";
+        }
+        $this->method('create_editor()', $js);
+        $this->method('update_editor()', $edit_js);
     }
     /**
      * 日期区间：
@@ -680,7 +599,7 @@ class Vue
     /**
      * 排序
      * misc('sortable');
-     * $vue->sort(".sortable1 tbody","_this.form.xcx_banner");
+     * $vue->sort(".sortable1 tbody","app.form.xcx_banner");
      */
     public function sort($element, $change_obj = 'lists_sort', $options = [])
     {
@@ -811,12 +730,12 @@ class Vue
     {
         $search_date = $this->search_date;
         $start_date = $this->start_date;
-        $output['今天'] = "
+        $output[lang('今天')] = "
             let start = new Date('" . date('Y-m-d', time()) . "'); 
             let end  = new Date('" . date('Y-m-d', time()) . "'); 
             picker.\$emit('pick', [end, end]);
         ";
-        $output['昨天'] = "
+        $output[lang('昨天')] = "
             let start = new Date('" . date('Y-m-d', time() - 86400) . "'); 
             let end  = new Date('" . date('Y-m-d', time() - 86400) . "'); 
             picker.\$emit('pick', [start, start]);
@@ -824,7 +743,7 @@ class Vue
         $start = date("Y-m-d", strtotime('this week'));
         $end = date('Y-m-d', time());
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['本周'] = "
+            $output[lang('本周')] = "           
                 let start = new Date('" . $start . "'); 
                 let end   = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -833,7 +752,7 @@ class Vue
         $start = date("Y-m-d", strtotime('last week monday'));
         $end = date('Y-m-d', strtotime('-10 second', strtotime('last week sunday +1 day')));
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['上周'] = "
+            $output[lang('上周')] = "
                 let start = new Date('" . $start . "'); 
                 let end   = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -842,7 +761,7 @@ class Vue
         $start = date("Y-m-d", strtotime('-2 weeks', strtotime('monday this week')));
         $end = date('Y-m-d', strtotime('-1 week -1 second', strtotime('monday this week')));
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['上上周'] = "
+            $output[lang('上上周')] = "
                 let start = new Date('" . $start . "'); 
                 let end   = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -851,7 +770,7 @@ class Vue
         $start = date("Y-m-01");
         $end = date("Y-m-d");
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['本月'] = "
+            $output[lang('本月')] = "
                 let start = new Date('" . $start . "');
                 let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -860,7 +779,7 @@ class Vue
         $start = date("Y-m-d", strtotime('first day of last month'));
         $end = date("Y-m-d", strtotime('last day of last month'));
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['上月'] = "
+            $output[lang('上月')] = "
                 let start = new Date('" . $start . "'); 
                 let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -869,7 +788,7 @@ class Vue
         $start = date("Y-m-d", strtotime('-2 months', strtotime('first day of this month')));
         $end = date("Y-m-d", strtotime('-1 day', strtotime('first day of last month')));
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['上上月'] = "
+            $output[lang('上上月')] = "
                 let start = new Date('" . $start . "'); 
                 let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -878,7 +797,7 @@ class Vue
         $start = date("Y-m-d", strtotime('-1 month') + 86400);
         $end = date('Y-m-d');
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['最近一个月'] = "
+            $output[lang('最近一个月')] = "
                 let start = new Date('" . $start . "'); 
                 let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -887,7 +806,7 @@ class Vue
         $start = date("Y-m-d", strtotime('-2 month') + 86400);
         $end = date('Y-m-d');
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['最近两个月'] = "
+            $output[lang('最近两个月')] = "
                 let start = new Date('" . $start . "'); 
                 let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -896,7 +815,7 @@ class Vue
         $start = date("Y-m-d", strtotime('-3 month') + 86400);
         $end = date('Y-m-d');
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['最近三个月'] = "
+            $output[lang('最近三个月')] = "
                 let start = new Date('" . $start . "'); 
                 let end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -913,7 +832,7 @@ class Vue
         $start = date("Y-m-d", strtotime('first day of January'));
         $end = date("Y-m-d", strtotime('last day of December'));
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['本年'] = "
+            $output[lang('本年')] = "
                 const start = new Date('" . $start . "');
                 const end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -922,7 +841,7 @@ class Vue
         $start = date("Y-m-d", strtotime('first day of January last year'));
         $end = date("Y-m-d", strtotime('last day of December  last year'));
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['上年'] = "
+            $output[lang('上年')] = "
                 const start = new Date('" . $start . "');
                 const end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -931,7 +850,7 @@ class Vue
         $start = date("Y-m-d", mktime(0, 0, 0, 1, 1, date('Y') - 2));
         $end = date("Y-m-d", mktime(23, 59, 59, 12, 31, date('Y') - 2));
         if ($this->getDateRangeFlag($start, $end, $start_date)) {
-            $output['上上年'] = "
+            $output[lang('上上年')] = "
                 const start = new Date('" . $start . "');
                 const end = new Date('" . $end . "'); 
                 picker.\$emit('pick', [start, end]);
@@ -974,7 +893,7 @@ class Vue
      */
     public function getImport($opt = [])
     {
-        $title = $opt['title'] ?: '导入数据';
+        $title = $opt['title'] ?: lang('导入数据');
         $success = $opt['success'] ?: 'import_xls_uploaded';
         $save_url = $opt['save_url'];
         $js = $opt['js'];
@@ -988,7 +907,7 @@ class Vue
         $type = $opt['type'] ?: 'primary';
         $local_url = $opt['local_url'] ?: 'url';
         $html = "<el-upload  accept='.xls, .xlsx' :on-success='" . $success . "' action='" . $url . "' ><el-button type='" . $type . "' >" .
-            ($opt['label'] ?: '导入')
+            ($opt['label'] ?: lang('导入'))
             . "</el-button></el-upload>";
         $this->method($success . "(res,file,list)", "
             let furl = res." . $local_url . "; 
@@ -1047,7 +966,7 @@ function vue_get_jidu($time = '')
         $time = strtotime($time);
     }
     $i    = ceil(date("n", $time) / 3);
-    $arr  = [1 => '一', 2 => '二', 3 => '三', 4 => '四'];
+    $arr  = [1 => lang('一'), 2 => lang('二'), 3 => lang('三'), 4 => lang('四')];
     $year = date("Y", $time);
     $arr_1 = vue_get_jidu_array($year);
     $new_arr = [];
@@ -1086,7 +1005,7 @@ function vue_message($time = 3)
     return "  
     if(!app._vue_message){
         app._vue_message = true;
-        _this.\$message({duration:" . $time . ",type:res.type,message:res.msg||res.message,onClose:function(){
+        app.\$message({duration:" . $time . ",type:res.type,message:res.msg||res.message,onClose:function(){
             app._vue_message = false;
         }});        
     }
@@ -1097,7 +1016,7 @@ function vue_message($time = 3)
  */
 function vue_loading($name = 'load', $txt = '加载中')
 {
-    return "const " . $name . " = _this.\$loading({
+    return "const " . $name . " = app.\$loading({
           lock: true,
           text: '" . $txt . "',
           spinner: 'el-icon-loading',
@@ -1112,8 +1031,8 @@ function vue_loading($name = 'load', $txt = '加载中')
  * ");
  * 表格拖拽
  */
-function vue_el_table_drag($ele = '.table', $data = 'form.video_list',$end = '')
-{ 
+function vue_el_table_drag($ele = '.table', $data = 'form.video_list', $end = '')
+{
     $js = "
     setTimeout(function(){
         const tbody = document.querySelector('" . $ele . " .el-table__body-wrapper tbody');   
@@ -1132,7 +1051,7 @@ function vue_el_table_drag($ele = '.table', $data = 'form.video_list',$end = '')
                     app." . $data . " = [];   
                     app.\$nextTick(()=>{
                         app." . $data . " = list; 
-                        ".$end."
+                        " . $end . "
                     }) ;
                     app.\$forceUpdate();
                 }
@@ -1141,5 +1060,5 @@ function vue_el_table_drag($ele = '.table', $data = 'form.video_list',$end = '')
     },50)";
     global $vue;
     $vue->created(['load_vue_drag()']);
-    $vue->method('load_vue_drag()',$js);
+    $vue->method('load_vue_drag()', $js);
 }
