@@ -417,7 +417,7 @@ class Vue
 
         foreach ($this->data as $k => $vv) {
             $this->data[$k] = $this->parse_data($vv);
-        } 
+        }
     }
     /**
      * 支持crud
@@ -471,7 +471,7 @@ class Vue
      */
     public function editor($name = 'body')
     {
-        self::$_editor[] = $name; 
+        self::$_editor[] = $name;
         return '<div id="' . $name . 'editor—wrapper" class="editor—wrapper">
             <div id="' . $name . 'weditor-tool" class="toolbar-container"></div>
             <div id="' . $name . 'weditor" class="editor-container"  style="height:300px;"></div>
@@ -480,23 +480,29 @@ class Vue
     /**
      * 运行编辑器
      */
-    protected function runEditor(){
-        if(!self::$_editor){
+    protected function runEditor()
+    {
+        if (!self::$_editor) {
             return;
-        }  
+        }
         $js = '';
-        foreach (self::$_editor as $name) { 
+        foreach (self::$_editor as $name) {
             $code =  "
                 parent.layer.closeAll();  
-                parent._editorInstances['" . $name . "'].insertNode({
-                    type: 'image',
-                    src: data.url,
-                    children: [{ text: '' }]
-                });
+                if(data.url){
+                    parent._editorInstances['" . $name . "'].insertNode({
+                        type: 'image',
+                        src: data.url,
+                        children: [{ text: '' }]
+                    });
+                }
             ";
-            $code = aes_encode($code); 
+            $code = aes_encode($code);
             $js .= " 
-                if (!window._editorInstances) window._editorInstances = {};
+                if (!window._editorInstances) window._editorInstances = {}; 
+                if (window._editorInstances['" . $name . "']) {
+                    return;
+                }
                 var editor_config_" . $name . " = {
                     placeholder: '',
                     MENU_CONF: {
@@ -530,20 +536,20 @@ class Vue
                     ]
                 };
                 
-                window._editorInstances['".$name."'] = E.createEditor({
-                    selector: '#".$name."weditor',
-                    config: editor_config_".$name.",
+                window._editorInstances['" . $name . "'] = E.createEditor({
+                    selector: '#" . $name . "weditor',
+                    config: editor_config_" . $name . ",
                     mode: 'simple'
                 });
                  
-                var toolbar_".$name." = E.createToolbar({
-                    editor: window._editorInstances['".$name."'],
-                    selector: '#".$name."weditor-tool',
-                    config: toolbar_config_".$name."
+                var toolbar_" . $name . " = E.createToolbar({
+                    editor: window._editorInstances['" . $name . "'],
+                    selector: '#" . $name . "weditor-tool',
+                    config: toolbar_config_" . $name . "
                 }); 
             ";
-        }  
-        $this->method("init_editor()" , $js);
+        }
+        $this->method("init_editor()", $js);
         $this->method("open_editor()", " 
             if (document.querySelector('#" . $name . "weditor')) {  
                 app.init_editor();    
@@ -552,23 +558,12 @@ class Vue
         $this->mounted('mounted_editor', "  
             this.open_editor(); 
         ");
-        
-        $js = '';
-        $edit_js = '';
-        foreach (self::$_editor as $name) {
-            $js .= "
-                setTimeout(function(){
-                    window._editorInstances['" . $name . "'].setHtml('');
-                },50);                
-            ";
-            $edit_js .= "  
-                setTimeout(function(){ 
-                    window._editorInstances['" . $name . "'].setHtml(app.form." . $name . "); 
-                },50); 
-            ";
-        }
-        $this->method('create_editor()', $js);
-        $this->method('update_editor()', $edit_js);
+
+        $this->method('update_editor(name,value)', "
+           setTimeout(()=>{
+                window._editorInstances[name].setHtml(value);
+           },500);
+        ");
     }
     /**
      * 日期区间：
