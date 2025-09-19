@@ -86,6 +86,7 @@ class Vue
     //搜索的时间
     public $search_date = [];
     public $use_config = true;
+    public $computed;
     /**
      * construct
      */
@@ -181,6 +182,16 @@ class Vue
         }
         $this->watch[$name] = $val;
     }
+    /**
+     * computed
+     */
+    public function computed($name, $val)
+    {
+        if(strpos($name,"()") === false){
+            $name = $name . "()";
+        }
+        $this->computed[$name] = $val;
+    }
 
     public function afterSave($val)
     {
@@ -274,6 +285,14 @@ class Vue
             }
             $mounted_str .= $br . php_to_js($v) . "";
         }
+        $computed_str = "";
+
+        foreach ($this->computed as $k => $v) {
+            $v = str_replace("js:", "", $v);
+            $this->parse_v($k, $v);
+            $computed_str .= $br . $k . php_to_js($v) . ",";
+        }
+
         $js = "
             var _this,app;
             new Vue({
@@ -285,6 +304,9 @@ class Vue
                 },
                 mounted(){
                     " . $mounted_str . "
+                },
+                computed: {
+                    " . $computed_str . "
                 },
                 watch: {
                     " . $watch_str . "
